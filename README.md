@@ -6,7 +6,7 @@ This code implements the algorithm described in
 
 C. Dalitz, T. Schramke, M. Jeltsch: "Iterative Hough Transform for
 Line Detection in 3D Point Clouds." IPOL, 2017
-
+http://www.ipol.im/pub/art/2017/208/
 
 Source Files
 ------------
