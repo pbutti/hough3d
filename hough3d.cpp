@@ -72,9 +72,7 @@ int main(int argc, char ** argv) {
   tree->SetBranchAddress("hitY", &hitY);
   tree->SetBranchAddress("hitZ", &hitZ);
   tree->SetBranchAddress("pdgID", &pdgID); 
-  
-  cout << "number of events: " << tree->GetEntries() << std::endl;
-  
+    
   // loop over all events
   for (int event = 0; event < tree->GetEntries(); event++) {
     
@@ -102,8 +100,6 @@ int main(int argc, char ** argv) {
         if (i<argc) opt_minvotes = atoi(argv[i]);
       }
     }
-
-  
 
     tree->GetEntry(event); // this fills our local variables that we created with the ith event
 
@@ -185,14 +181,16 @@ int main(int argc, char ** argv) {
       if (rc==0.0) break;
 
       a = a + X.shift;
-      std::cout<<a<<" " << b << std::endl;
+      //std::cout<<"a = " << a << ", b = " << b << std::endl;
       nlines++;
+
+      X.removePoints(Y);
 
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
     
 
-    std::cout<<"Number of lines:: "<<nlines<<std::endl;
+    std::cout<<"Number of lines: "<<nlines<<std::endl;
 
 
     // clean up

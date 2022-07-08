@@ -92,9 +92,9 @@ int PointCloud::readFromFile(const char* path){
 // adds the point to the PointCloud
 void PointCloud::addPoint(PointCloud& X, double x, double y, double z){
   Vector3d point;
-  point.x = x;
-  point.y = y;
-  point.z = z;
+  &point.x = x;
+  &point.y = y;
+  &point.z = z;
   X.points.push_back(point);
 }
 
