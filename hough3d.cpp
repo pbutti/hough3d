@@ -48,35 +48,8 @@ double orthogonal_LSQ(const PointCloud &pc, Vector3d* a, Vector3d* b){
 }
 
 int main(int argc, char ** argv) {
-  // output file
-  TFile f1("skimmed_events_pdg_hough.root", "recreate");
-  TTree t1("Events", "Events");
-
-  // input file
-  TFile *f = TFile::Open("skimmed_events_pdg1.root");
-  f->cd();
   
-  // get the tree from the file and assign it to a new local variable
-  TTree *tree = (TTree*)(f->Get("Events")); 
-
-  // declare local branch variables
-  vector<double> * hitX = 0;
-  vector<double> * hitY = 0;
-  vector<double> * hitZ = 0;
-  vector<int> * pdgID = 0;
-  int hitN;
-
-  // set addresses for tree branches
-  tree->SetBranchAddress("hitN", &hitN);
-  tree->SetBranchAddress("hitX", &hitX);
-  tree->SetBranchAddress("hitY", &hitY);
-  tree->SetBranchAddress("hitZ", &hitZ);
-  tree->SetBranchAddress("pdgID", &pdgID); 
-    
-  // loop over all events
-  for (int event = 0; event < tree->GetEntries(); event++) {
-    
-    // default values for command line options
+  // default values for command line options
     double opt_dx = 0.0;
     int opt_nlines = 0;
     int opt_minvotes = 0;
@@ -100,7 +73,61 @@ int main(int argc, char ** argv) {
         if (i<argc) opt_minvotes = atoi(argv[i]);
       }
     }
+  
+  // output file
+  TFile f1("skimmed_events_pdg_hough.root", "recreate");
+  TTree t1("Events", "Events");
 
+  // input file
+  TFile *f = TFile::Open("skimmed_events_pdg1.root");
+  f->cd();
+  
+  // get the tree from the file and assign it to a new local variable
+  TTree *tree = (TTree*)(f->Get("Events")); 
+
+  // declare local branch variables
+  vector<double> * hitX = 0;
+  vector<double> * hitY = 0;
+  vector<double> * hitZ = 0;
+  vector<int> * pdgID = 0;
+  int hitN;
+  int nlines=0;
+
+
+  // set addresses for tree branches
+  tree->SetBranchAddress("hitN", &hitN);
+  tree->SetBranchAddress("hitX", &hitX);
+  tree->SetBranchAddress("hitY", &hitY);
+  tree->SetBranchAddress("hitZ", &hitZ);
+  tree->SetBranchAddress("pdgID", &pdgID); 
+
+
+  //Fit results
+  std::vector<double> a_x; 
+  std::vector<double> a_y;
+  std::vector<double> a_z;
+  std::vector<double> b_x;   
+  std::vector<double> b_y;
+  std::vector<double> b_z;
+  
+
+  // set the addresses for output tree
+  //t1->Branch("hitN",&hitN,"/I");
+  t1.Branch("hitX",&hitX);
+  t1.Branch("hitY",&hitY);
+  t1.Branch("hitZ",&hitZ);
+  t1.Branch("pdgID",&pdgID);
+  t1.Branch("nlines",&nlines,"/I");
+  t1.Branch("ax",&a_x);
+  t1.Branch("ay",&a_y);
+  t1.Branch("az",&a_z);
+  t1.Branch("bx",&b_x);
+  t1.Branch("by",&b_y);
+  t1.Branch("bz",&b_z);
+  
+  // loop over all events
+  for (int event = 0; event < tree->GetEntries(); event++) {
+    
     tree->GetEntry(event); // this fills our local variables that we created with the ith event
 
     Vector3d minP, maxP, minPshifted, maxPshifted; // bounding box of point cloud
@@ -158,7 +185,7 @@ int main(int argc, char ** argv) {
     PointCloud Y;	// points close to line
     double rc;
     unsigned int nvotes;
-    int nlines = 0;
+    
     
     do {
       Vector3d a; // anchor point of line
@@ -186,6 +213,14 @@ int main(int argc, char ** argv) {
 
       X.removePoints(Y);
 
+      a_x.push_back(a.x);
+      a_y.push_back(a.y);
+      a_z.push_back(a.z);
+
+      b_x.push_back(b.x); 
+      b_y.push_back(b.y);
+      b_z.push_back(b.z);
+
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
     
@@ -193,10 +228,28 @@ int main(int argc, char ** argv) {
     std::cout<<"Number of lines: "<<nlines<<std::endl;
 
 
+    t1.Fill();
+
+    nlines = 0; 
+    a_x.clear();
+    a_y.clear();
+    a_z.clear();
+
+    b_x.clear();
+    b_y.clear();
+    b_z.clear();
+
+
     // clean up
     delete hough;
+
     
-  }
+    
+  } // event loop
+
+  f1.cd();
+  t1.Write();
+  f1.Close();
 
   return 0;
 }
