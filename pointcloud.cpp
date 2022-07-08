@@ -75,18 +75,31 @@ int PointCloud::readFromFile(const char* path){
       return 2;
     }
     points.push_back(point);
+
 #ifdef WEBDEMO
     if (points.size() > 1E6) {
       fprintf(stderr, "Error: program was compiled in WEBDEMO mode, "
               "which only permits less than 10^6 points in point cloud\n");
       return 3;
-  }
+    }
 #endif
   }
-
   fclose(f);
   return 0;
 }
+
+
+// adds the point to the PointCloud
+void PointCloud::addPoint(PointCloud& X, double x, double y, double z){
+  Vector3d point;
+  point.x = x;
+  point.y = y;
+  point.z = z;
+  X.points.push_back(point);
+}
+
+
+
 
 // store points closer than dx to line (a, b) in Y
 void PointCloud::pointsCloseToLine(const Vector3d &a, const Vector3d &b, double dx, PointCloud* Y) {

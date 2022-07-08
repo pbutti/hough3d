@@ -29,6 +29,8 @@ public:
   void getMinMax3D(Vector3d* min_pt, Vector3d* max_pt);
   // reads point cloud data from the given file
   int readFromFile(const char* path);
+  // add point to points in PointCloud
+  void addPoint(PointCloud& X, double x, double y, double z);
   // store points closer than dx to line (a, b) in Y
   void pointsCloseToLine(const Vector3d &a, const Vector3d &b,
                          double dx, PointCloud* Y);
