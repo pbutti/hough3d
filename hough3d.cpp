@@ -109,7 +109,7 @@ int main(int argc, char ** argv) {
   std::vector<double> b_x;   
   std::vector<double> b_y;
   std::vector<double> b_z;
-  std::vector<std::vector<int>> pdg_assoc;
+  std::vector<std::vector<double>> pdg_assoc;
   
 
   // set the addresses for output tree
@@ -213,19 +213,26 @@ int main(int argc, char ** argv) {
       //std::cout<<"a = " << a << ", b = " << b << std::endl;
       nlines++;
 
+      // loop over all of the points in the point cloud Y (hits in the track)
+      std::vector<double> pdgsOfTrack;
       for (unsigned int i=0; i<Y.points.size(); i++) {
         Vector3d p = Y.points[i] + X.shift;
        
-        std::vector<int> pdgsOfTrack;
-        // loop over all of the hits of the event 
+        // loop over all of the hits in the event 
         for (unsigned int hit=0; hit<hitX->size(); hit++) {
-          if (p.x == hitX->at(hit) && p.y == hitY->at(hit) && p.z == hitZ->at(hit)){
-            pdgsOfTrack.push_back(pdgID->at(hit));
+          if (abs(hitX->at(hit) - p.x) < 1e-6 && abs(hitY->at(hit) - p.y) < 1e-6 && abs(hitZ->at(hit) - p.z) < 1e-6) {
+            double id = (double) pdgID->at(hit);
+            //cout << id << endl;
+            pdgsOfTrack.push_back(id);
+            break;
           }
-        pdg_assoc.push_back(pdgsOfTrack);
-        pdgsOfTrack.clear();
         }
       }
+      for (int i = 0; i < pdgsOfTrack.size(); i++){
+        cout << pdgsOfTrack[i] << endl;
+      }
+      pdg_assoc.push_back(pdgsOfTrack);
+      pdgsOfTrack.clear();
 
       X.removePoints(Y);
 
@@ -240,7 +247,11 @@ int main(int argc, char ** argv) {
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
     
-
+    for (int i=0;i<pdg_assoc.size();i++) {
+      for (int j=0;j<pdg_assoc[i].size();j++){
+        cout << pdg_assoc[i][j] << endl;
+      }
+    }
     std::cout<<"Number of lines: "<<nlines<<std::endl;
 
 
