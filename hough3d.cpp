@@ -75,7 +75,7 @@ int main(int argc, char ** argv) {
     }
   
   // output file
-  TFile f1("skimmed_events_pdg_hough.root", "recreate");
+  TFile f1("skimmed_events_pdg_hough_cut1.root", "recreate"); 
   TTree t1("Events", "Events");
 
   // input file
@@ -188,7 +188,8 @@ int main(int argc, char ** argv) {
     double rc;
     unsigned int nvotes;
     
-    
+    bool sameLayer = false; // want to avoid saving tracks with hits in the same layer (transverse)
+
     do {
       Vector3d a; // anchor point of line
       Vector3d b; // direction of line
@@ -211,14 +212,30 @@ int main(int argc, char ** argv) {
 
       a = a + X.shift;
       //std::cout<<"a = " << a << ", b = " << b << std::endl;
-      nlines++;
 
       // loop over all of the points in the point cloud Y (hits in the track)
       std::vector<double> pdgsOfTrack;
       for (unsigned int i=0; i<Y.points.size(); i++) {
         Vector3d p = Y.points[i] + X.shift;
-       
-        // loop over all of the hits in the event 
+
+        // 1. loop over all the other points in the track (PointCloud Y)
+        for (unsigned int j=0; j<Y.points.size(); j++) {
+          if (j != i) {
+            Vector3d p2 = Y.points[j] + X.shift;
+            // set the boolean to true if 2 points appear in the same layer
+            if (p.z == p2.z) {
+              sameLayer = true;
+              break;
+            }
+          }
+        }
+
+        if (sameLayer == true) {
+          pdgsOfTrack.clear(); // clear the pdg IDs associated with the track
+          break;  // make sure not to continue loading the pdg IDs associated with the track
+        }
+
+        // 2. loop over all of the hits in the event to save pdg ID (only if track doesnt have same layer hits)
         for (unsigned int hit=0; hit<hitX->size(); hit++) {
           if (abs(hitX->at(hit) - p.x) < 1e-6 && abs(hitY->at(hit) - p.y) < 1e-6 && abs(hitZ->at(hit) - p.z) < 1e-6) {
             double id = (double) pdgID->at(hit);
@@ -228,32 +245,39 @@ int main(int argc, char ** argv) {
           }
         }
       }
-      for (int i = 0; i < pdgsOfTrack.size(); i++){
-        cout << pdgsOfTrack[i] << endl;
+
+      if (pdgsOfTrack.size() != 0) {
+        pdg_assoc.push_back(pdgsOfTrack);
       }
-      pdg_assoc.push_back(pdgsOfTrack);
       pdgsOfTrack.clear();
 
       X.removePoints(Y);
 
-      a_x.push_back(a.x);
-      a_y.push_back(a.y);
-      a_z.push_back(a.z);
+      if (sameLayer == false) {
+        a_x.push_back(a.x);
+        a_y.push_back(a.y);
+        a_z.push_back(a.z);
 
-      b_x.push_back(b.x); 
-      b_y.push_back(b.y);
-      b_z.push_back(b.z);
+        b_x.push_back(b.x); 
+        b_y.push_back(b.y);
+        b_z.push_back(b.z);
+
+        nlines++; // only increment the number of tracks if no hits in the same layer
+      }
+
+      sameLayer = false;
 
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
     
+    /*
     for (int i=0;i<pdg_assoc.size();i++) {
       for (int j=0;j<pdg_assoc[i].size();j++){
         cout << pdg_assoc[i][j] << endl;
       }
     }
+    */
     std::cout<<"Number of lines: "<<nlines<<std::endl;
-
 
     t1.Fill();
 
