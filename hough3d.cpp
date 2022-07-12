@@ -109,6 +109,7 @@ int main(int argc, char ** argv) {
   std::vector<double> b_x;   
   std::vector<double> b_y;
   std::vector<double> b_z;
+  std::vector<std::vector<int>> pdg_assoc;
   
 
   // set the addresses for output tree
@@ -124,6 +125,7 @@ int main(int argc, char ** argv) {
   t1.Branch("bx",&b_x);
   t1.Branch("by",&b_y);
   t1.Branch("bz",&b_z);
+  t1.Branch("pdg_assoc", &pdg_assoc);
   
   // loop over all events
   for (int event = 0; event < tree->GetEntries(); event++) {
@@ -211,6 +213,20 @@ int main(int argc, char ** argv) {
       //std::cout<<"a = " << a << ", b = " << b << std::endl;
       nlines++;
 
+      for (unsigned int i=0; i<Y.points.size(); i++) {
+        Vector3d p = Y.points[i] + X.shift;
+       
+        std::vector<int> pdgsOfTrack;
+        // loop over all of the hits of the event 
+        for (unsigned int hit=0; hit<hitX->size(); hit++) {
+          if (p.x == hitX->at(hit) && p.y == hitY->at(hit) && p.z == hitZ->at(hit)){
+            pdgsOfTrack.push_back(pdgID->at(hit));
+          }
+        pdg_assoc.push_back(pdgsOfTrack);
+        pdgsOfTrack.clear();
+        }
+      }
+
       X.removePoints(Y);
 
       a_x.push_back(a.x);
@@ -238,6 +254,7 @@ int main(int argc, char ** argv) {
     b_x.clear();
     b_y.clear();
     b_z.clear();
+    pdg_assoc.clear();
 
 
     // clean up
