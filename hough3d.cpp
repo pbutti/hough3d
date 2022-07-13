@@ -13,6 +13,16 @@
 #include <string.h>
 #include <Eigen/Dense>
 
+struct compare
+{
+	int key;
+	compare(int const &i): key(i) { }
+
+	bool operator()(int const &i) {
+		return (i == key);
+	}
+};
+
 using Eigen::MatrixXf;
 using namespace std;
 
@@ -75,7 +85,7 @@ int main(int argc, char ** argv) {
     }
   
   // output file
-  TFile f1("skimmed_events_pdg_hough_cut1.root", "recreate"); 
+  TFile f1("skimmed_events_pdg_hough_cut1.1.root", "recreate"); 
   TTree t1("Events", "Events");
 
   // input file
@@ -188,8 +198,7 @@ int main(int argc, char ** argv) {
     double rc;
     unsigned int nvotes;
     
-    bool sameLayer = false; // want to avoid saving tracks with hits in the same layer (transverse)
-
+    double sameLayerCounter = 0.0; // counter for number of layers with same layer hits 
     do {
       Vector3d a; // anchor point of line
       Vector3d b; // direction of line
@@ -215,22 +224,25 @@ int main(int argc, char ** argv) {
 
       // loop over all of the points in the point cloud Y (hits in the track)
       std::vector<double> pdgsOfTrack;
+      std::vector<unsigned int> reference;
       for (unsigned int i=0; i<Y.points.size(); i++) {
         Vector3d p = Y.points[i] + X.shift;
+        reference.push_back(i); // vector for remembering points that were used 
 
         // 1. loop over all the other points in the track (PointCloud Y)
         for (unsigned int j=0; j<Y.points.size(); j++) {
-          if (j != i) {
+
+          // make sure to not double count points
+          if (j != i && !any_of(reference.begin(),reference.end(),compare(j))) {
             Vector3d p2 = Y.points[j] + X.shift;
-            // set the boolean to true if 2 points appear in the same layer
+            // increment the counter if 2 points appear in the same layer 
             if (p.z == p2.z) {
-              sameLayer = true;
-              break;
+              sameLayerCounter += 1;
             }
           }
         }
 
-        if (sameLayer == true) {
+        if (sameLayerCounter > 1) {
           pdgsOfTrack.clear(); // clear the pdg IDs associated with the track
           break;  // make sure not to continue loading the pdg IDs associated with the track
         }
@@ -246,6 +258,8 @@ int main(int argc, char ** argv) {
         }
       }
 
+      
+
       if (pdgsOfTrack.size() != 0) {
         pdg_assoc.push_back(pdgsOfTrack);
       }
@@ -253,7 +267,7 @@ int main(int argc, char ** argv) {
 
       X.removePoints(Y);
 
-      if (sameLayer == false) {
+      if (sameLayerCounter < 2) {
         a_x.push_back(a.x);
         a_y.push_back(a.y);
         a_z.push_back(a.z);
@@ -261,11 +275,12 @@ int main(int argc, char ** argv) {
         b_x.push_back(b.x); 
         b_y.push_back(b.y);
         b_z.push_back(b.z);
+        cout << sameLayerCounter << endl;
 
         nlines++; // only increment the number of tracks if no hits in the same layer
       }
 
-      sameLayer = false;
+      sameLayerCounter = 0;
 
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
@@ -290,7 +305,6 @@ int main(int argc, char ** argv) {
     b_y.clear();
     b_z.clear();
     pdg_assoc.clear();
-
 
     // clean up
     delete hough;
