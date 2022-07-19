@@ -160,6 +160,9 @@ int main(int argc, char ** argv) {
   std::vector<double> b_y;
   std::vector<double> b_z;
   std::vector<std::vector<double>> pdg_assoc;
+  std::vector<std::vector<double>> x_assoc;
+  std::vector<std::vector<double>> y_assoc;
+  std::vector<std::vector<double>> z_assoc;
   std::vector<double> distFromPTraj;
   std::vector<double> distFromETraj;
   
@@ -184,6 +187,9 @@ int main(int argc, char ** argv) {
   t1.Branch("by",&b_y);
   t1.Branch("bz",&b_z);
   t1.Branch("pdg_assoc",&pdg_assoc);
+  t1.Branch("x_assoc",&x_assoc);
+  t1.Branch("y_assoc",&y_assoc);
+  t1.Branch("z_assoc",&z_assoc);
   t1.Branch("distFromPTraj",&distFromPTraj);
   t1.Branch("distFromETraj",&distFromETraj);
   
@@ -271,13 +277,12 @@ int main(int argc, char ** argv) {
     double rc;
     unsigned int nvotes;
     
-    double sameLayerCounter = 0.0; // counter for number of layers with same layer hits 
     do {
       Vector3d a; // anchor point of line
       Vector3d b; // direction of line
 
       hough->subtract(Y); // do it here to save one call
-      
+
       nvotes = hough->getLine(&a, &b);
 
       X.pointsCloseToLine(a, b, opt_dx, &Y);
@@ -297,33 +302,25 @@ int main(int argc, char ** argv) {
 
       // loop over all of the points in the point cloud Y (hits in the track)
       std::vector<double> pdgsOfTrack;
-      std::vector<unsigned int> reference;
+      std::vector<double> xsOfTrack;
+      std::vector<double> ysOfTrack;
+      std::vector<double> zsOfTrack;
       for (unsigned int i=0; i<Y.points.size(); i++) {
         Vector3d p = Y.points[i] + X.shift;
-        reference.push_back(i); // vector for remembering points that were used 
 
-        // 1. loop over all the other points in the track (PointCloud Y)
-        for (unsigned int j=0; j<Y.points.size(); j++) {
-
-          // make sure to not double count points
-          if (j != i && !any_of(reference.begin(),reference.end(),compare(j))) {
-            Vector3d p2 = Y.points[j] + X.shift;
-            // increment the counter if 2 points appear in the same layer 
-            if (p.z == p2.z) {
-              sameLayerCounter += 1;
-            }
-          }
-        }
-
-        pdgsOfTrack.clear(); // clear the pdg IDs associated with the track
-
-        // 2. loop over all of the hits in the event to save pdg ID (only if track doesnt have same layer hits)
+        // loop over all of the hits in the event to save pdg ID, x, y, z
         for (unsigned int hit=0; hit<hitX->size(); hit++) {
           if (abs(hitX->at(hit) - p.x) < 1e-6 && abs(hitY->at(hit) - p.y) < 1e-6 && abs(hitZ->at(hit) - p.z) < 1e-6) {
             double id = (double) pdgID->at(hit);
+            double x = hitX->at(hit);
+            double y = hitY->at(hit);
+            double z = hitZ->at(hit);
+
             //cout << id << endl;
             pdgsOfTrack.push_back(id);
-            break;
+            xsOfTrack.push_back(x);
+            ysOfTrack.push_back(y);
+            zsOfTrack.push_back(z);
           }
         }
       }
@@ -336,8 +333,14 @@ int main(int argc, char ** argv) {
 
       if (pdgsOfTrack.size() != 0) {
         pdg_assoc.push_back(pdgsOfTrack);
+        x_assoc.push_back(xsOfTrack);
+        y_assoc.push_back(ysOfTrack);
+        z_assoc.push_back(zsOfTrack);
       }
       pdgsOfTrack.clear();
+      xsOfTrack.clear();
+      ysOfTrack.clear();
+      zsOfTrack.clear();
 
       X.removePoints(Y);
 
@@ -353,8 +356,6 @@ int main(int argc, char ** argv) {
       distFromPTraj.push_back(pDist);
 
       nlines++; // only increment the number of tracks if no hits in the same layer
-
-      sameLayerCounter = 0;
 
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
@@ -372,6 +373,9 @@ int main(int argc, char ** argv) {
     b_y.clear();
     b_z.clear();
     pdg_assoc.clear();
+    x_assoc.clear();
+    y_assoc.clear();
+    z_assoc.clear();
 
     distFromETraj.clear();
     distFromPTraj.clear();
