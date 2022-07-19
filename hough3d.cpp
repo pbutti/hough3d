@@ -61,8 +61,14 @@ double orthogonal_LSQ(const PointCloud &pc, Vector3d* a, Vector3d* b){
 double dist3Dlines(Vector3d* start1,Vector3d* end1,Vector3d* start2,Vector3d* end2) {  
   
   // direction vectors
-  Vector3d e1 = start1 - end1;
-  Vector3d e2 = start2 - end2;
+  Vector3d e1;
+  e1.x = start1->x - end1->x;
+  e1.y = start1->y - end1->y;
+  e1.z = start1->z - end1->z;
+  Vector3d e2;
+  e2.x = start2->x - end2->x;
+  e2.y = start2->y - end2->y;
+  e2.z = start2->z - end2->z;
 
   // vector perpendicular to both lines
   Vector3d n;
@@ -71,8 +77,12 @@ double dist3Dlines(Vector3d* start1,Vector3d* end1,Vector3d* start2,Vector3d* en
   n.z = (e1.x)*(e2.y) - (e1.y)*(e2.x);
 
   // calculate distance
-  Vector3d r = start1 - start2;
-  double n_mag = sqrt((pow(n.x,2) + pow(n.y,2)+ pow(n.z,2)),0.5)
+  Vector3d r;
+  r.x = start1->x - start2->x;
+  r.y = start1->y - start2->y;
+  r.z = start1->z - start2->z;
+
+  double n_mag = sqrt(pow(n.x,2) + pow(n.y,2)+ pow(n.z,2));
   
   return (n.x*r.x + n.y*r.y + n.z+r.z)/n_mag;
 }
@@ -109,7 +119,7 @@ int main(int argc, char ** argv) {
   TTree t1("Events", "Events");
 
   // input file
-  TFile *f = TFile::Open("skimmed_kaons/skimmed_kaons_0.root");
+  TFile *f = TFile::Open("/Users/davidjiang/mip_tracking/skimmed_kaons/skimmed_kaons_0.root");
   f->cd();
   
   // get the tree from the file and assign it to a new local variable
@@ -194,7 +204,7 @@ int main(int argc, char ** argv) {
 
     Vector3d pTrajStart, pTrajEnd, eTrajStart, eTrajEnd; // photon and electron starting and ending points
 
-    for (int layer = 0; layer < photonX.size(); layer++) {
+    for (int layer = 0; layer < photonX->size(); layer++) {
       // starting point of photon and electron trajectories
       if (layer == 0) {
         pTrajStart.x = photonX->at(layer);
@@ -205,7 +215,7 @@ int main(int argc, char ** argv) {
         eTrajStart.z = electronZ->at(layer);
       }
       // ending point of photon and electron trajectories
-      if (layer == photonX.size() - 1) {
+      if (layer == photonX->size() - 1) {
         pTrajEnd.x = photonX->at(layer);
         pTrajEnd.y = photonY->at(layer);
         pTrajEnd.z = photonZ->at(layer);
@@ -321,11 +331,8 @@ int main(int argc, char ** argv) {
       // save distance from fitted track to photon trajectory and electron trajectory
       Vector3d startPoint = a - b*100;
       Vector3d endPoint = a + b*100;
-      double pDist = dist3Dlines(pTrajStart,pTrajEnd,startPoint,endPoint);
-      double eDist = dist3Dlines(eTrajStart,eTrajEnd,startPoint,endPoint);
-
-      pDistances.push_back(pDist);
-      eDistances.push_back(eDist)
+      double pDist = dist3Dlines(&pTrajStart,&pTrajEnd,&startPoint,&endPoint);
+      double eDist = dist3Dlines(&eTrajStart,&eTrajEnd,&startPoint,&endPoint);
 
       if (pdgsOfTrack.size() != 0) {
         pdg_assoc.push_back(pdgsOfTrack);
