@@ -57,6 +57,26 @@ double orthogonal_LSQ(const PointCloud &pc, Vector3d* a, Vector3d* b){
   return (rc);
 }
 
+// minimum distance between two 3D lines (each line defined by 2 points)
+double dist3Dlines(Vector3d* start1,Vector3d* end1,Vector3d* start2,Vector3d* end2) {  
+  
+  // direction vectors
+  Vector3d e1 = start1 - end1;
+  Vector3d e2 = start2 - end2;
+
+  // vector perpendicular to both lines
+  Vector3d n;
+  n.x = (e1.y)*(e2.z) - (e1.z)*(e2.y);
+  n.y = (e1.z)*(e2.x) - (e1.x)*(e2.z);
+  n.z = (e1.x)*(e2.y) - (e1.y)*(e2.x);
+
+  // calculate distance
+  Vector3d r = start1 - start2;
+  double n_mag = sqrt((pow(n.x,2) + pow(n.y,2)+ pow(n.z,2)),0.5)
+  
+  return (n.x*r.x + n.y*r.y + n.z+r.z)/n_mag;
+}
+
 int main(int argc, char ** argv) {
   
   // default values for command line options
@@ -85,11 +105,11 @@ int main(int argc, char ** argv) {
     }
   
   // output file
-  TFile f1("skimmed_events_pdg_hough_cut1.1.root", "recreate"); 
+  TFile f1("skimmed_kaons_hough.root", "recreate"); 
   TTree t1("Events", "Events");
 
   // input file
-  TFile *f = TFile::Open("skimmed_events_pdg1.root");
+  TFile *f = TFile::Open("skimmed_kaons/skimmed_kaons_0.root");
   f->cd();
   
   // get the tree from the file and assign it to a new local variable
@@ -100,16 +120,26 @@ int main(int argc, char ** argv) {
   vector<double> * hitY = 0;
   vector<double> * hitZ = 0;
   vector<int> * pdgID = 0;
-  int hitN;
+  vector<double> * photonX = 0;
+  vector<double> * photonY = 0;
+  vector<double> * photonZ = 0;
+  vector<double> * electronX = 0;
+  vector<double> * electronY = 0;
+  vector<double> * electronZ = 0;
+  
   int nlines=0;
 
-
   // set addresses for tree branches
-  tree->SetBranchAddress("hitN", &hitN);
   tree->SetBranchAddress("hitX", &hitX);
   tree->SetBranchAddress("hitY", &hitY);
   tree->SetBranchAddress("hitZ", &hitZ);
   tree->SetBranchAddress("pdgID", &pdgID); 
+  tree->SetBranchAddress("photonX", &photonX);
+  tree->SetBranchAddress("photonY", &photonY);
+  tree->SetBranchAddress("photonZ", &photonZ);
+  tree->SetBranchAddress("electronX", &electronX);
+  tree->SetBranchAddress("electronY", &electronY);
+  tree->SetBranchAddress("electronZ", &electronZ);
 
 
   //Fit results
@@ -120,6 +150,8 @@ int main(int argc, char ** argv) {
   std::vector<double> b_y;
   std::vector<double> b_z;
   std::vector<std::vector<double>> pdg_assoc;
+  std::vector<double> distFromPTraj;
+  std::vector<double> distFromETraj;
   
 
   // set the addresses for output tree
@@ -128,6 +160,12 @@ int main(int argc, char ** argv) {
   t1.Branch("hitY",&hitY);
   t1.Branch("hitZ",&hitZ);
   t1.Branch("pdgID",&pdgID);
+  t1.Branch("photonX",&photonX);
+  t1.Branch("photonY",&photonY);
+  t1.Branch("photonZ",&photonZ);
+  t1.Branch("electronX",&electronX);
+  t1.Branch("electronY",&electronY);
+  t1.Branch("electronZ",&electronZ);
   t1.Branch("nlines",&nlines,"/I");
   t1.Branch("ax",&a_x);
   t1.Branch("ay",&a_y);
@@ -135,7 +173,9 @@ int main(int argc, char ** argv) {
   t1.Branch("bx",&b_x);
   t1.Branch("by",&b_y);
   t1.Branch("bz",&b_z);
-  t1.Branch("pdg_assoc", &pdg_assoc);
+  t1.Branch("pdg_assoc",&pdg_assoc);
+  t1.Branch("distFromPTraj",&distFromPTraj);
+  t1.Branch("distFromETraj",&distFromETraj);
   
   // loop over all events
   for (int event = 0; event < tree->GetEntries(); event++) {
@@ -150,6 +190,29 @@ int main(int argc, char ** argv) {
     // loop over all hits and add them to the point cloud
     for (int hit = 0; hit < hitX->size(); hit++) {
       X.addPoint(X,hitX->at(hit), hitY->at(hit), hitZ->at(hit));
+    }
+
+    Vector3d pTrajStart, pTrajEnd, eTrajStart, eTrajEnd; // photon and electron starting and ending points
+
+    for (int layer = 0; layer < photonX.size(); layer++) {
+      // starting point of photon and electron trajectories
+      if (layer == 0) {
+        pTrajStart.x = photonX->at(layer);
+        pTrajStart.y = photonY->at(layer);
+        pTrajStart.z = photonZ->at(layer);
+        eTrajStart.x = electronX->at(layer);
+        eTrajStart.y = electronY->at(layer);
+        eTrajStart.z = electronZ->at(layer);
+      }
+      // ending point of photon and electron trajectories
+      if (layer == photonX.size() - 1) {
+        pTrajEnd.x = photonX->at(layer);
+        pTrajEnd.y = photonY->at(layer);
+        pTrajEnd.z = photonZ->at(layer);
+        eTrajEnd.x = electronX->at(layer);
+        eTrajEnd.y = electronY->at(layer);
+        eTrajEnd.z = electronZ->at(layer);
+      }
     }
 
     // cannot make point clouds with < 2 points
@@ -242,10 +305,7 @@ int main(int argc, char ** argv) {
           }
         }
 
-        if (sameLayerCounter > 1) {
-          pdgsOfTrack.clear(); // clear the pdg IDs associated with the track
-          break;  // make sure not to continue loading the pdg IDs associated with the track
-        }
+        pdgsOfTrack.clear(); // clear the pdg IDs associated with the track
 
         // 2. loop over all of the hits in the event to save pdg ID (only if track doesnt have same layer hits)
         for (unsigned int hit=0; hit<hitX->size(); hit++) {
@@ -258,7 +318,14 @@ int main(int argc, char ** argv) {
         }
       }
 
-      
+      // save distance from fitted track to photon trajectory and electron trajectory
+      Vector3d startPoint = a - b*100;
+      Vector3d endPoint = a + b*100;
+      double pDist = dist3Dlines(pTrajStart,pTrajEnd,startPoint,endPoint);
+      double eDist = dist3Dlines(eTrajStart,eTrajEnd,startPoint,endPoint);
+
+      pDistances.push_back(pDist);
+      eDistances.push_back(eDist)
 
       if (pdgsOfTrack.size() != 0) {
         pdg_assoc.push_back(pdgsOfTrack);
@@ -267,31 +334,24 @@ int main(int argc, char ** argv) {
 
       X.removePoints(Y);
 
-      if (sameLayerCounter < 2) {
-        a_x.push_back(a.x);
-        a_y.push_back(a.y);
-        a_z.push_back(a.z);
+      a_x.push_back(a.x);
+      a_y.push_back(a.y);
+      a_z.push_back(a.z);
 
-        b_x.push_back(b.x); 
-        b_y.push_back(b.y);
-        b_z.push_back(b.z);
-        cout << sameLayerCounter << endl;
+      b_x.push_back(b.x); 
+      b_y.push_back(b.y);
+      b_z.push_back(b.z);
 
-        nlines++; // only increment the number of tracks if no hits in the same layer
-      }
+      distFromETraj.push_back(eDist);
+      distFromPTraj.push_back(pDist);
+
+      nlines++; // only increment the number of tracks if no hits in the same layer
 
       sameLayerCounter = 0;
 
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
-    
-    /*
-    for (int i=0;i<pdg_assoc.size();i++) {
-      for (int j=0;j<pdg_assoc[i].size();j++){
-        cout << pdg_assoc[i][j] << endl;
-      }
-    }
-    */
+
     std::cout<<"Number of lines: "<<nlines<<std::endl;
 
     t1.Fill();
@@ -306,11 +366,12 @@ int main(int argc, char ** argv) {
     b_z.clear();
     pdg_assoc.clear();
 
+    distFromETraj.clear();
+    distFromPTraj.clear();
+
     // clean up
     delete hough;
 
-    
-    
   } // event loop
 
   f1.cd();
