@@ -115,11 +115,11 @@ int main(int argc, char ** argv) {
     }
   
   // output file
-  TFile f1("skimmed_kaons_hough.root", "recreate"); 
+  TFile f1("../skimmed_kaons/kaons_muons_dx12_minvotes3_nlines2.root", "recreate"); 
   TTree t1("Events", "Events");
 
   // input file
-  TFile *f = TFile::Open("/Users/davidjiang/mip_tracking/skimmed_kaons/skimmed_kaons_0.root");
+  TFile *f = TFile::Open("/Users/davidjiang/mip_tracking/skimmed_kaons/kaons_muons_0.root");
   f->cd();
   
   // get the tree from the file and assign it to a new local variable
@@ -234,7 +234,7 @@ int main(int argc, char ** argv) {
     // cannot make point clouds with < 2 points
     if (X.points.size() < 2) {
       fprintf(stderr, "Error: point cloud has less than two points\n");
-      return 1;
+      continue;
     }
 
     // center the point cloud and compute a new bounding box
@@ -254,7 +254,7 @@ int main(int argc, char ** argv) {
     }
     else if (opt_dx >= d) {
       fprintf(stderr, "Error: dx too large\n");
-      return 1;
+      continue;
     }
     double num_x = floor(d / opt_dx + 0.5);
     double num_cells = num_x * num_x * num_directions[granularity];
