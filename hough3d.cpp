@@ -1,5 +1,4 @@
-#include<cstdio>
-#include<cstdlib>
+
 #include<iostream>
 
 #include "TTree.h"
@@ -93,6 +92,7 @@ int main(int argc, char ** argv) {
     double opt_dx = 0.0;
     int opt_nlines = 0;
     int opt_minvotes = 0;
+    int ntotallines = 0;
 
     // number of icosahedron subdivisions for direction discretization
     int granularity = 4;
@@ -115,11 +115,11 @@ int main(int argc, char ** argv) {
     }
   
   // output file
-  TFile f1("../skimmed_kaons/kaons_muons_dx12_minvotes3_nlines2.root", "recreate"); 
+  TFile f1("/Users/davidjiang/mip_tracking/kaons/tough_kaons_skimmed_amp_0.8_hough.root", "recreate"); 
   TTree t1("Events", "Events");
 
   // input file
-  TFile *f = TFile::Open("/Users/davidjiang/mip_tracking/skimmed_kaons/kaons_muons_0.root");
+  TFile *f = TFile::Open("/Users/davidjiang/mip_tracking/kaons/tough_kaons_skimmed_amp_0.8.root");
   f->cd();
   
   // get the tree from the file and assign it to a new local variable
@@ -355,7 +355,9 @@ int main(int argc, char ** argv) {
       distFromETraj.push_back(eDist);
       distFromPTraj.push_back(pDist);
 
-      nlines++; // only increment the number of tracks if no hits in the same layer
+      nlines++;
+      ntotallines++;
+
 
     } while ((X.points.size() > 1) && 
             ((opt_nlines == 0) || (opt_nlines > nlines)));
@@ -388,6 +390,6 @@ int main(int argc, char ** argv) {
   f1.cd();
   t1.Write();
   f1.Close();
-
+  std::cout<< "Total Number of Lines: " << ntotallines << std::endl;
   return 0;
 }
