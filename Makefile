@@ -11,7 +11,7 @@
 #DEMOMODE = -DWEBDEMO
 
 # include directory of libeigen
-LIBEIGEN = /usr/local/Cellar/eigen/3.4.0_1/include/eigen3
+LIBEIGEN = /home/dgj1118/eigen
 
 # settings for GNU C compiler
 CC = g++
